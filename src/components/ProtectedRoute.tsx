@@ -1,9 +1,8 @@
-
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ProtectedRouteProps = {
-  children: React.ReactNode;
+  children: React.ReactNode | ((props: { currentUser: any }) => React.ReactNode);
   allowedRoles?: Array<'teacher' | 'student'>;
 };
 
@@ -27,6 +26,12 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/unauthorized" replace />;
   }
 
+  // Check if children is a function and call it with currentUser
+  if (typeof children === 'function') {
+    return <>{children({ currentUser })}</>;
+  }
+
+  // Otherwise, render children directly
   return <>{children}</>;
 };
 

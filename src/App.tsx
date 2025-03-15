@@ -29,14 +29,13 @@ const App = () => (
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  {({ currentUser }) => {
-                    if (currentUser?.role === 'teacher') {
-                      return <Navigate to="/teacher-dashboard" replace />;
-                    } else if (currentUser?.role === 'student') {
-                      return <Navigate to="/student-dashboard" replace />;
-                    }
-                    return null; // This should never happen due to ProtectedRoute
-                  }}
+                  {({ currentUser }) => 
+                    currentUser?.role === 'teacher' ? (
+                      <Navigate to="/teacher-dashboard" replace />
+                    ) : currentUser?.role === 'student' ? (
+                      <Navigate to="/student-dashboard" replace />
+                    ) : null
+                  }
                 </ProtectedRoute>
               } 
             />
