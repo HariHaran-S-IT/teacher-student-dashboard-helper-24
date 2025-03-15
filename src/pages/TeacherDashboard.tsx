@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy, LogOut, Plus, Search, Users } from 'lucide-react';
+import { Copy, FileText, LogOut, Plus, Search, Users } from 'lucide-react';
 import AnimatedCard from '@/components/AnimatedCard';
 import PageTransition from '@/components/PageTransition';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -87,9 +88,21 @@ const TeacherDashboard = () => {
               </p>
             </div>
             
-            <Button variant="outline" onClick={logout} className="shrink-0">
-              <LogOut className="h-4 w-4 mr-2" /> Sign Out
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                asChild 
+                className="shrink-0"
+              >
+                <Link to="/teacher-assessments">
+                  <FileText className="h-4 w-4 mr-2" /> Assessments
+                </Link>
+              </Button>
+              
+              <Button variant="outline" onClick={logout} className="shrink-0">
+                <LogOut className="h-4 w-4 mr-2" /> Sign Out
+              </Button>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

@@ -7,7 +7,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherAssessments from "./pages/TeacherAssessments";
+import AssessmentDetails from "./pages/AssessmentDetails";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentAssessment from "./pages/StudentAssessment";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -50,10 +53,37 @@ const App = () => (
             />
             
             <Route 
+              path="/teacher-assessments" 
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherAssessments />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/assessment/:assessmentId" 
+              element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <AssessmentDetails />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
               path="/student-dashboard" 
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/student-assessment/:assessmentId" 
+              element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentAssessment />
                 </ProtectedRoute>
               } 
             />

@@ -17,15 +17,69 @@ type Student = {
   createdBy: string;
 };
 
+type Question = {
+  id: string;
+  text: string;
+  options?: string[];
+  correctAnswer?: string;
+  marks: number;
+  type: 'text' | 'multiple-choice';
+};
+
+type Assessment = {
+  id: string;
+  title: string;
+  description: string;
+  createdBy: string;
+  dueDate: string;
+  questions: Question[];
+  createdAt: string;
+};
+
+type Submission = {
+  id: string;
+  assessmentId: string;
+  studentId: string;
+  answers: {
+    questionId: string;
+    answer: string;
+  }[];
+  submittedAt: string;
+  isCompleted: boolean;
+  marksAwarded?: number;
+};
+
 type AuthContextType = {
   currentUser: User | null;
   students: Student[];
   teachers: User[];
+  assessments: Assessment[];
+  submissions: Submission[];
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   createStudent: (name: string, email: string, password: string) => Promise<Student>;
   addTeacher: (name: string, email: string, password: string) => Promise<void>;
+  createAssessment: (
+    title: string,
+    description: string,
+    dueDate: string,
+    questions: Omit<Question, 'id'>[]
+  ) => Promise<Assessment>;
+  getTeacherAssessments: (teacherId: string) => Assessment[];
+  getStudentAssessments: (studentId: string) => Assessment[];
+  submitAssessment: (
+    assessmentId: string,
+    studentId: string,
+    answers: {
+      questionId: string;
+      answer: string;
+    }[]
+  ) => Promise<void>;
+  getSubmission: (assessmentId: string, studentId: string) => Submission | undefined;
+  getAssessmentSubmissions: (assessmentId: string) => Submission[];
+  awardMarks: (submissionId: string, marksAwarded: number) => Promise<void>;
+  getAssessmentById: (assessmentId: string) => Assessment | undefined;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,9 +112,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<User[]>(initialTeachers);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check for saved login on mount
+  // Check for saved login and data on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
@@ -72,15 +128,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStudents(JSON.parse(savedStudents));
     }
     
+    const savedAssessments = localStorage.getItem('assessments');
+    if (savedAssessments) {
+      setAssessments(JSON.parse(savedAssessments));
+    }
+    
+    const savedSubmissions = localStorage.getItem('submissions');
+    if (savedSubmissions) {
+      setSubmissions(JSON.parse(savedSubmissions));
+    }
+    
     setLoading(false);
   }, []);
 
-  // Save students to localStorage whenever they change
+  // Save data to localStorage whenever they change
   useEffect(() => {
     if (students.length > 0) {
       localStorage.setItem('students', JSON.stringify(students));
     }
   }, [students]);
+  
+  useEffect(() => {
+    if (assessments.length > 0) {
+      localStorage.setItem('assessments', JSON.stringify(assessments));
+    }
+  }, [assessments]);
+  
+  useEffect(() => {
+    if (submissions.length > 0) {
+      localStorage.setItem('submissions', JSON.stringify(submissions));
+    }
+  }, [submissions]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -124,7 +202,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info('You have been logged out');
   };
 
-  // Updated to accept a password parameter instead of generating one
   const createStudent = async (name: string, email: string, password: string): Promise<Student> => {
     if (!currentUser || currentUser.role !== 'teacher') {
       throw new Error('Only teachers can create students');
@@ -168,15 +245,146 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.success(`Teacher ${name} added successfully`);
   };
 
+  const createAssessment = async (
+    title: string,
+    description: string,
+    dueDate: string,
+    questions: Omit<Question, 'id'>[]
+  ): Promise<Assessment> => {
+    if (!currentUser || currentUser.role !== 'teacher') {
+      throw new Error('Only teachers can create assessments');
+    }
+    
+    const questionsWithIds = questions.map(q => ({
+      ...q,
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 9)
+    }));
+    
+    const newAssessment: Assessment = {
+      id: Date.now().toString(),
+      title,
+      description,
+      createdBy: currentUser.id,
+      dueDate,
+      questions: questionsWithIds,
+      createdAt: new Date().toISOString(),
+    };
+    
+    setAssessments(prev => [...prev, newAssessment]);
+    toast.success(`Assessment "${title}" created successfully`);
+    return newAssessment;
+  };
+
+  const getTeacherAssessments = (teacherId: string): Assessment[] => {
+    return assessments.filter(assessment => assessment.createdBy === teacherId);
+  };
+
+  const getStudentAssessments = (studentId: string): Assessment[] => {
+    // Find the student to get their teacher
+    const student = students.find(s => s.id === studentId);
+    if (!student) return [];
+    
+    // Get all assessments created by this student's teacher
+    return assessments.filter(assessment => assessment.createdBy === student.createdBy);
+  };
+
+  const submitAssessment = async (
+    assessmentId: string,
+    studentId: string,
+    answers: { questionId: string; answer: string }[]
+  ): Promise<void> => {
+    const assessment = assessments.find(a => a.id === assessmentId);
+    if (!assessment) {
+      throw new Error('Assessment not found');
+    }
+    
+    // Check if all questions are answered to determine completion status
+    const isCompleted = answers.length === assessment.questions.length;
+    
+    const existingSubmission = submissions.find(
+      s => s.assessmentId === assessmentId && s.studentId === studentId
+    );
+    
+    if (existingSubmission) {
+      // Update existing submission
+      setSubmissions(prev => 
+        prev.map(s => 
+          s.id === existingSubmission.id 
+            ? {
+                ...s,
+                answers,
+                submittedAt: new Date().toISOString(),
+                isCompleted
+              }
+            : s
+        )
+      );
+    } else {
+      // Create new submission
+      const newSubmission: Submission = {
+        id: Date.now().toString(),
+        assessmentId,
+        studentId,
+        answers,
+        submittedAt: new Date().toISOString(),
+        isCompleted
+      };
+      
+      setSubmissions(prev => [...prev, newSubmission]);
+    }
+    
+    toast.success(
+      isCompleted 
+        ? 'Assessment submitted successfully' 
+        : 'Assessment saved as draft'
+    );
+  };
+
+  const getSubmission = (assessmentId: string, studentId: string): Submission | undefined => {
+    return submissions.find(
+      s => s.assessmentId === assessmentId && s.studentId === studentId
+    );
+  };
+
+  const getAssessmentSubmissions = (assessmentId: string): Submission[] => {
+    return submissions.filter(s => s.assessmentId === assessmentId);
+  };
+
+  const awardMarks = async (submissionId: string, marksAwarded: number): Promise<void> => {
+    setSubmissions(prev => 
+      prev.map(s => 
+        s.id === submissionId 
+          ? { ...s, marksAwarded } 
+          : s
+      )
+    );
+    
+    toast.success('Marks awarded successfully');
+  };
+
+  const getAssessmentById = (assessmentId: string): Assessment | undefined => {
+    return assessments.find(a => a.id === assessmentId);
+  };
+
   const value = {
     currentUser,
     students,
     teachers,
+    assessments,
+    submissions,
     loading,
     login,
     logout,
     createStudent,
     addTeacher,
+    createAssessment,
+    getTeacherAssessments,
+    getStudentAssessments,
+    submitAssessment,
+    getSubmission,
+    getAssessmentSubmissions,
+    awardMarks,
+    getAssessmentById,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
