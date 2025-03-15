@@ -31,6 +31,7 @@ const TeacherDashboard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
+  const [newStudentPassword, setNewStudentPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -50,9 +51,10 @@ const TeacherDashboard = () => {
     setIsSubmitting(true);
     
     try {
-      await createStudent(newStudentName, newStudentEmail);
+      await createStudent(newStudentName, newStudentEmail, newStudentPassword);
       setNewStudentName('');
       setNewStudentEmail('');
+      setNewStudentPassword('');
       setIsDialogOpen(false);
     } catch (error) {
       toast.error((error as Error).message);
@@ -128,7 +130,7 @@ const TeacherDashboard = () => {
                 <DialogHeader>
                   <DialogTitle>Create New Student</DialogTitle>
                   <DialogDescription>
-                    Add a new student to your classroom. They will receive login credentials.
+                    Add a new student to your classroom. You'll need to provide their login credentials.
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -154,6 +156,19 @@ const TeacherDashboard = () => {
                         onChange={(e) => setNewStudentEmail(e.target.value)}
                         placeholder="john.doe@example.com"
                         required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="text"
+                        value={newStudentPassword}
+                        onChange={(e) => setNewStudentPassword(e.target.value)}
+                        placeholder="Enter password"
+                        required
+                        minLength={4}
                       />
                     </div>
                   </div>

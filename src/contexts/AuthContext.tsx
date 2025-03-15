@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -25,7 +24,7 @@ type AuthContextType = {
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  createStudent: (name: string, email: string) => Promise<Student>;
+  createStudent: (name: string, email: string, password: string) => Promise<Student>;
   addTeacher: (name: string, email: string, password: string) => Promise<void>;
 };
 
@@ -125,17 +124,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     toast.info('You have been logged out');
   };
 
-  // Generate a random password
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
-
-  const createStudent = async (name: string, email: string): Promise<Student> => {
+  // Updated to accept a password parameter instead of generating one
+  const createStudent = async (name: string, email: string, password: string): Promise<Student> => {
     if (!currentUser || currentUser.role !== 'teacher') {
       throw new Error('Only teachers can create students');
     }
@@ -145,7 +135,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('A student with this email already exists');
     }
     
-    const password = generatePassword();
     const newStudent: Student = {
       id: Date.now().toString(),
       name,
