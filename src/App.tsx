@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import TeacherAssessments from "./pages/TeacherAssessments";
@@ -16,7 +16,15 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 
-const queryClient = new QueryClient();
+// Create a client with default settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -24,7 +32,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -103,7 +111,7 @@ const App = () => (
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

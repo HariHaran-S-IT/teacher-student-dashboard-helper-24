@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,12 +43,60 @@ const Login = () => {
           </div>
           
           <AnimatedCard>
-            <Tabs defaultValue="teacher" className="w-full">
+            <Tabs defaultValue="student" className="w-full">
               <TabsList className="grid w-full grid-cols-3 mb-6">
-                <TabsTrigger value="teacher">Teacher</TabsTrigger>
                 <TabsTrigger value="student">Student</TabsTrigger>
-                <TabsTrigger value="admin">Admin</TabsTrigger>
+                <TabsTrigger value="teacher">Teacher</TabsTrigger>
+                <TabsTrigger value="admin">Placement Director</TabsTrigger>
               </TabsList>
+              
+              <TabsContent value="student" className="mt-0">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="student-email">Email</Label>
+                    <Input
+                      id="student-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="student@example.com"
+                      required
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="student-password">Password</Label>
+                    <Input
+                      id="student-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Your password"
+                      required
+                      className="w-full"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Signing in...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <LogIn className="mr-2 h-4 w-4" /> Sign In
+                      </span>
+                    )}
+                  </Button>
+                </form>
+                
+                <div className="mt-6 text-center text-sm text-gray-500">
+                  <p>Students can login using credentials provided by their teachers</p>
+                </div>
+              </TabsContent>
               
               <TabsContent value="teacher" className="mt-0">
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -103,54 +150,6 @@ const Login = () => {
                 </div>
               </TabsContent>
               
-              <TabsContent value="student" className="mt-0">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="student-email">Email</Label>
-                    <Input
-                      id="student-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="student@example.com"
-                      required
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="student-password">Password</Label>
-                    <Input
-                      id="student-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Your password"
-                      required
-                      className="w-full"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Signing in...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <LogIn className="mr-2 h-4 w-4" /> Sign In
-                      </span>
-                    )}
-                  </Button>
-                </form>
-                
-                <div className="mt-6 text-center text-sm text-gray-500">
-                  <p>Students can login using credentials provided by their teachers</p>
-                </div>
-              </TabsContent>
-              
               <TabsContent value="admin" className="mt-0">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
@@ -195,7 +194,7 @@ const Login = () => {
                 </form>
                 
                 <div className="mt-6 text-center text-sm text-gray-500">
-                  <p>Admin login details:</p>
+                  <p>Placement Director login details:</p>
                   <p className="mt-1">Email: admin@example.com</p>
                   <p>Password: adminpass</p>
                 </div>
