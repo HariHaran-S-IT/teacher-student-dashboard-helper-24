@@ -100,7 +100,7 @@ const initialTeachers: User[] = [
   { id: '8', name: 'Teacher Hannah', email: 'teacher8@example.com', role: 'teacher' },
 ];
 
-const adminUser: User = { id: 'admin1', name: 'Placement Director', email: 'admin@example.com', role: 'admin' };
+const adminUser: User = { id: 'admin1', name: 'Admin User', email: 'admin@example.com', role: 'admin' };
 
 const teacherPasswords: Record<string, string> = {
   'teacher1@example.com': 'password1',
