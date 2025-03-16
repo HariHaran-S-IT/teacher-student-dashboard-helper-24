@@ -36,7 +36,7 @@ type AssessmentFormProps = {
 const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [dueDate, setDueDate] = useState<Date | undefined>(new Date()); // Initialize with current date
   const [questions, setQuestions] = useState<Question[]>([
     { text: '', type: 'text', marks: 1 }
   ]);
@@ -214,7 +214,8 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
                 selected={dueDate}
                 onSelect={setDueDate}
                 initialFocus
-                disabled={(date) => date < new Date()}
+                // Allow selecting the current date
+                disabled={(date) => date < new Date().setHours(0, 0, 0, 0)}
                 className="p-3 pointer-events-auto"
               />
             </PopoverContent>

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Copy, FileText, LogOut, Plus, Search, Users } from 'lucide-react';
+import { Copy, FileText, LogOut, Plus, Search, Trash, Users } from 'lucide-react';
 import AnimatedCard from '@/components/AnimatedCard';
 import PageTransition from '@/components/PageTransition';
 import { toast } from 'sonner';
@@ -26,9 +26,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TeacherDashboard = () => {
-  const { currentUser, students, logout, createStudent } = useAuth();
+  const { currentUser, students, logout, createStudent, deleteStudent } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentEmail, setNewStudentEmail] = useState('');
@@ -36,6 +46,8 @@ const TeacherDashboard = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const teacherStudents = students.filter(
     student => student.createdBy === currentUser?.id
@@ -61,6 +73,20 @@ const TeacherDashboard = () => {
       toast.error((error as Error).message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteStudent(studentToDelete);
+      setStudentToDelete(null);
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -228,16 +254,25 @@ const TeacherDashboard = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const credentials = `Email: ${student.email}\nPassword: ${student.password}`;
-                            copyToClipboard(credentials, student.id);
-                          }}
-                        >
-                          Copy Credentials
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const credentials = `Email: ${student.email}\nPassword: ${student.password}`;
+                              copyToClipboard(credentials, student.id);
+                            }}
+                          >
+                            Copy Credentials
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setStudentToDelete(student.id)}
+                          >
+                            <Trash className="h-3 w-3 mr-1" /> Delete
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -266,6 +301,29 @@ const TeacherDashboard = () => {
           </AnimatedCard>
         </div>
       </div>
+
+      {/* Delete Student Alert Dialog */}
+      <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Student</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this student? This action cannot be undone.
+              All their assessment submissions will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStudent}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageTransition>
   );
 };

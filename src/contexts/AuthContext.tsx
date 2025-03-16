@@ -60,6 +60,7 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   createStudent: (name: string, email: string, password: string) => Promise<Student>;
+  deleteStudent: (studentId: string) => Promise<void>;
   addTeacher: (name: string, email: string, password: string) => Promise<void>;
   createAssessment: (
     title: string,
@@ -223,6 +224,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStudents(prev => [...prev, newStudent]);
     toast.success(`Student ${name} created successfully`);
     return newStudent;
+  };
+
+  const deleteStudent = async (studentId: string): Promise<void> => {
+    if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
+      throw new Error('Only teachers and admins can delete students');
+    }
+    
+    const studentToDelete = students.find(s => s.id === studentId);
+    
+    if (!studentToDelete) {
+      throw new Error('Student not found');
+    }
+    
+    // For teachers, only allow deletion of students they created
+    if (currentUser.role === 'teacher' && studentToDelete.createdBy !== currentUser.id) {
+      throw new Error('You can only delete students you created');
+    }
+    
+    // Remove student's submissions
+    const updatedSubmissions = submissions.filter(s => s.studentId !== studentId);
+    setSubmissions(updatedSubmissions);
+    
+    // Remove the student
+    const updatedStudents = students.filter(s => s.id !== studentId);
+    setStudents(updatedStudents);
+    
+    toast.success(`Student ${studentToDelete.name} deleted successfully`);
   };
 
   const addTeacher = async (name: string, email: string, password: string): Promise<void> => {
@@ -404,6 +432,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     createStudent,
+    deleteStudent,
     addTeacher,
     createAssessment,
     getTeacherAssessments,
