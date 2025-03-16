@@ -5,7 +5,7 @@ type User = {
   id: string;
   name: string;
   email: string;
-  role: 'teacher' | 'student';
+  role: 'teacher' | 'student' | 'admin';
   createdBy?: string;
 };
 
@@ -81,23 +81,26 @@ type AuthContextType = {
   getAssessmentSubmissions: (assessmentId: string) => Submission[];
   awardMarks: (submissionId: string, marksAwarded: number) => Promise<void>;
   getAssessmentById: (assessmentId: string) => Assessment | undefined;
+  getAllAssessments: () => Assessment[];
+  getAllSubmissions: () => Submission[];
+  getAllStudents: () => Student[];
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock data for teachers
 const initialTeachers: User[] = [
-  { id: '1', name: 'Teacher 1', email: 'teacher1@example.com', role: 'teacher' },
-  { id: '2', name: 'Teacher 2', email: 'teacher2@example.com', role: 'teacher' },
-  { id: '3', name: 'Teacher 3', email: 'teacher3@example.com', role: 'teacher' },
-  { id: '4', name: 'Teacher 4', email: 'teacher4@example.com', role: 'teacher' },
-  { id: '5', name: 'Teacher 5', email: 'teacher5@example.com', role: 'teacher' },
-  { id: '6', name: 'Teacher 6', email: 'teacher6@example.com', role: 'teacher' },
-  { id: '7', name: 'Teacher 7', email: 'teacher7@example.com', role: 'teacher' },
-  { id: '8', name: 'Teacher 8', email: 'teacher8@example.com', role: 'teacher' },
+  { id: '1', name: 'Teacher Aiden', email: 'teacher1@example.com', role: 'teacher' },
+  { id: '2', name: 'Teacher Bella', email: 'teacher2@example.com', role: 'teacher' },
+  { id: '3', name: 'Teacher Carlos', email: 'teacher3@example.com', role: 'teacher' },
+  { id: '4', name: 'Teacher Diana', email: 'teacher4@example.com', role: 'teacher' },
+  { id: '5', name: 'Teacher Ethan', email: 'teacher5@example.com', role: 'teacher' },
+  { id: '6', name: 'Teacher Fiona', email: 'teacher6@example.com', role: 'teacher' },
+  { id: '7', name: 'Teacher George', email: 'teacher7@example.com', role: 'teacher' },
+  { id: '8', name: 'Teacher Hannah', email: 'teacher8@example.com', role: 'teacher' },
 ];
 
-// Mock passwords (in a real app, these would be securely hashed)
+const adminUser: User = { id: 'admin1', name: 'Admin User', email: 'admin@example.com', role: 'admin' };
+
 const teacherPasswords: Record<string, string> = {
   'teacher1@example.com': 'password1',
   'teacher2@example.com': 'password2',
@@ -107,17 +110,17 @@ const teacherPasswords: Record<string, string> = {
   'teacher6@example.com': 'password6',
   'teacher7@example.com': 'password7',
   'teacher8@example.com': 'password8',
+  'admin@example.com': 'adminpass',
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
-  const [teachers, setTeachers] = useState<User[]>(initialTeachers);
+  const [teachers, setTeachers] = useState<User[]>([...initialTeachers, adminUser]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check for saved login and data on mount
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
@@ -142,7 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  // Save data to localStorage whenever they change
   useEffect(() => {
     if (students.length > 0) {
       localStorage.setItem('students', JSON.stringify(students));
@@ -165,16 +167,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     
     try {
-      // First check if it's a teacher login
-      const teacher = teachers.find(t => t.email === email);
-      if (teacher && teacherPasswords[email] === password) {
-        setCurrentUser(teacher);
-        localStorage.setItem('currentUser', JSON.stringify(teacher));
-        toast.success(`Welcome back, ${teacher.name}`);
+      const user = teachers.find(t => t.email === email);
+      if (user && teacherPasswords[email] === password) {
+        setCurrentUser(user);
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        toast.success(`Welcome back, ${user.name}`);
         return true;
       }
       
-      // Then check if it's a student login
       const student = students.find(s => s.email === email && s.password === password);
       if (student) {
         const studentUser: User = {
@@ -208,7 +208,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Only teachers can create students');
     }
     
-    // Check if student with this email already exists
     if (students.some(s => s.email === email)) {
       throw new Error('A student with this email already exists');
     }
@@ -227,7 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addTeacher = async (name: string, email: string, password: string): Promise<void> => {
-    // Check if teacher with this email already exists
     if (teachers.some(t => t.email === email)) {
       throw new Error('A teacher with this email already exists');
     }
@@ -239,7 +237,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: 'teacher',
     };
     
-    // In a real app, you would hash the password before storing
     (teacherPasswords as any)[email] = password;
     
     setTeachers(prev => [...prev, newTeacher]);
@@ -281,11 +278,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getStudentAssessments = (studentId: string): Assessment[] => {
-    // Find the student to get their teacher
     const student = students.find(s => s.id === studentId);
     if (!student) return [];
     
-    // Get all assessments created by this student's teacher
     return assessments.filter(assessment => assessment.createdBy === student.createdBy);
   };
 
@@ -299,10 +294,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Assessment not found');
     }
     
-    // Check if all questions are answered to determine completion status
     const isCompleted = answers.length === assessment.questions.length;
     
-    // Auto-grade multiple choice questions
     let autoGradedMarks = 0;
     if (isCompleted) {
       assessment.questions.forEach(question => {
@@ -320,7 +313,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     
     if (existingSubmission) {
-      // Update existing submission
       setSubmissions(prev => 
         prev.map(s => 
           s.id === existingSubmission.id 
@@ -335,7 +327,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       );
     } else {
-      // Create new submission
       const newSubmission: Submission = {
         id: Date.now().toString(),
         assessmentId,
@@ -382,6 +373,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return assessments.find(a => a.id === assessmentId);
   };
 
+  const getAllAssessments = (): Assessment[] => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      return [];
+    }
+    return assessments;
+  };
+
+  const getAllSubmissions = (): Submission[] => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      return [];
+    }
+    return submissions;
+  };
+
+  const getAllStudents = (): Student[] => {
+    if (!currentUser || currentUser.role !== 'admin') {
+      return [];
+    }
+    return students;
+  };
+
   const value = {
     currentUser,
     students,
@@ -401,6 +413,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getAssessmentSubmissions,
     awardMarks,
     getAssessmentById,
+    getAllAssessments,
+    getAllSubmissions,
+    getAllStudents,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

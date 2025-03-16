@@ -1,9 +1,10 @@
+
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ProtectedRouteProps = {
   children: React.ReactNode | ((props: { currentUser: any }) => React.ReactNode);
-  allowedRoles?: Array<'teacher' | 'student'>;
+  allowedRoles?: Array<'teacher' | 'student' | 'admin'>;
 };
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {

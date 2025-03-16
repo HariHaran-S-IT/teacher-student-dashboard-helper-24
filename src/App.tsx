@@ -14,6 +14,7 @@ import StudentAssessment from "./pages/StudentAssessment";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,8 @@ const App = () => (
                       <Navigate to="/teacher-dashboard" replace />
                     ) : currentUser?.role === 'student' ? (
                       <Navigate to="/student-dashboard" replace />
+                    ) : currentUser?.role === 'admin' ? (
+                      <Navigate to="/admin-dashboard" replace />
                     ) : null
                   }
                 </ProtectedRoute>
@@ -64,7 +67,7 @@ const App = () => (
             <Route 
               path="/assessment/:assessmentId" 
               element={
-                <ProtectedRoute allowedRoles={['teacher']}>
+                <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                   <AssessmentDetails />
                 </ProtectedRoute>
               } 
@@ -84,6 +87,15 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['student']}>
                   <StudentAssessment />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/admin-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
                 </ProtectedRoute>
               } 
             />
