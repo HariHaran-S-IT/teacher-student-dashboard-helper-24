@@ -47,6 +47,7 @@ type Submission = {
   submittedAt: string;
   isCompleted: boolean;
   marksAwarded?: number;
+  autoGradedMarks?: number;
 };
 
 type AuthContextType = {
@@ -301,6 +302,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if all questions are answered to determine completion status
     const isCompleted = answers.length === assessment.questions.length;
     
+    // Auto-grade multiple choice questions
+    let autoGradedMarks = 0;
+    if (isCompleted) {
+      assessment.questions.forEach(question => {
+        if (question.type === 'multiple-choice' && question.correctAnswer) {
+          const studentAnswer = answers.find(a => a.questionId === question.id)?.answer;
+          if (studentAnswer === question.correctAnswer) {
+            autoGradedMarks += question.marks;
+          }
+        }
+      });
+    }
+    
     const existingSubmission = submissions.find(
       s => s.assessmentId === assessmentId && s.studentId === studentId
     );
@@ -314,7 +328,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ...s,
                 answers,
                 submittedAt: new Date().toISOString(),
-                isCompleted
+                isCompleted,
+                autoGradedMarks: isCompleted ? autoGradedMarks : undefined
               }
             : s
         )
@@ -327,7 +342,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         studentId,
         answers,
         submittedAt: new Date().toISOString(),
-        isCompleted
+        isCompleted,
+        autoGradedMarks: isCompleted ? autoGradedMarks : undefined
       };
       
       setSubmissions(prev => [...prev, newSubmission]);

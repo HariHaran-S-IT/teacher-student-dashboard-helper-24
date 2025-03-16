@@ -1,15 +1,16 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Radio } from '@/components/ui/radio-group';
-import { ArrowLeft, Calendar, CheckCircle, Clock, FileText } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ArrowLeft, Calendar, CheckCircle, Clock, FileText, AlertTriangle } from 'lucide-react';
 import AnimatedCard from '@/components/AnimatedCard';
 import PageTransition from '@/components/PageTransition';
-import { useParams, Link, Navigate } from 'react-router-dom';
-import { format, isPast } from 'date-fns';
+import { useParams, Link, Navigate, useNavigate } from 'react-router-dom';
+import { format, isPast, differenceInSeconds } from 'date-fns';
 import { toast } from 'sonner';
 import {
   Card,
@@ -19,6 +20,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const StudentAssessment = () => {
   const { assessmentId } = useParams<{ assessmentId: string }>();
@@ -31,6 +42,12 @@ const StudentAssessment = () => {
   
   const [answers, setAnswers] = useState<{ [questionId: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [showExitWarning, setShowExitWarning] = useState(false);
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showTabWarning, setShowTabWarning] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const navigate = useNavigate();
   
   if (!currentUser || currentUser.role !== 'student') {
     return <Navigate to="/unauthorized" />;
@@ -63,6 +80,79 @@ const StudentAssessment = () => {
     }
   }, [submission]);
   
+  // Set up timer
+  useEffect(() => {
+    if (isCompleted || isOverdue) return;
+    
+    const dueDate = new Date(assessment.dueDate);
+    const now = new Date();
+    
+    if (dueDate > now) {
+      const secondsRemaining = differenceInSeconds(dueDate, now);
+      setTimeRemaining(secondsRemaining);
+      
+      timerRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev === null || prev <= 1) {
+            // Time's up - clear interval and submit
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            handleSubmit(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setTimeRemaining(0);
+    }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [assessment, isCompleted, isOverdue]);
+  
+  // Tab visibility handler
+  useEffect(() => {
+    if (isCompleted || isOverdue) return;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setTabSwitchCount(prev => prev + 1);
+        setShowTabWarning(true);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleVisibilityChange);
+    
+    // Prevent leaving the page
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isCompleted, isOverdue]);
+  
+  const formatTimeRemaining = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers(prev => ({
       ...prev,
@@ -91,6 +181,9 @@ const StudentAssessment = () => {
       
       if (finalSubmit) {
         toast.success('Assessment submitted successfully');
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
       } else {
         toast.success('Progress saved');
       }
@@ -99,6 +192,16 @@ const StudentAssessment = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const handleExit = () => {
+    setShowExitWarning(true);
+  };
+  
+  const confirmExit = () => {
+    // Save progress before exiting
+    handleSubmit(false);
+    navigate('/student-dashboard');
   };
 
   const answeredQuestions = Object.keys(answers).length;
@@ -115,13 +218,11 @@ const StudentAssessment = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  asChild 
+                  onClick={handleExit}
                   className="h-8 px-2"
                 >
-                  <Link to="/student-dashboard">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back
-                  </Link>
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Exit
                 </Button>
                 <h1 className="text-3xl font-semibold text-gray-900">
                   {assessment.title}
@@ -190,6 +291,16 @@ const StudentAssessment = () => {
                       </div>
                     </div>
                     
+                    {/* Timer Display */}
+                    {timeRemaining !== null && (
+                      <div className="bg-gray-100 px-4 py-2 rounded-md text-center mb-4 sm:mb-0 w-full sm:w-auto">
+                        <div className="text-sm text-gray-500 mb-1">Time Remaining</div>
+                        <div className={`font-mono font-bold text-lg ${timeRemaining < 300 ? 'text-red-500' : ''}`}>
+                          {formatTimeRemaining(timeRemaining)}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex space-x-2 w-full sm:w-auto">
                       <Button 
                         variant="outline" 
@@ -201,7 +312,7 @@ const StudentAssessment = () => {
                       </Button>
                       <Button 
                         onClick={() => handleSubmit(true)}
-                        disabled={isSubmitting || progress < 100}
+                        disabled={isSubmitting}
                         className="flex-1 sm:flex-initial"
                       >
                         Submit Assessment
@@ -280,6 +391,20 @@ const StudentAssessment = () => {
                 </AnimatedCard>
               )}
               
+              {tabSwitchCount > 0 && (
+                <AnimatedCard delay={0.3} className="mt-6 bg-yellow-50 border-yellow-200">
+                  <div className="flex items-center text-yellow-700">
+                    <AlertTriangle className="h-5 w-5 mr-2" />
+                    <div>
+                      <h3 className="font-medium">Tab Switching Detected</h3>
+                      <p className="text-sm">
+                        You have switched tabs {tabSwitchCount} time(s). This activity is recorded.
+                      </p>
+                    </div>
+                  </div>
+                </AnimatedCard>
+              )}
+              
               {!isOverdue && (
                 <div className="flex justify-end space-x-2 mt-6 mb-12">
                   <Button 
@@ -291,7 +416,7 @@ const StudentAssessment = () => {
                   </Button>
                   <Button 
                     onClick={() => handleSubmit(true)}
-                    disabled={isSubmitting || progress < 100}
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Submitting...' : 'Submit Assessment'}
                   </Button>
@@ -301,6 +426,40 @@ const StudentAssessment = () => {
           )}
         </div>
       </div>
+
+      {/* Exit Warning Dialog */}
+      <AlertDialog open={showExitWarning} onOpenChange={setShowExitWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your progress will be saved, but the assessment will not be submitted as complete.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmExit}>Save & Exit</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Tab Switch Warning Dialog */}
+      <AlertDialog open={showTabWarning} onOpenChange={setShowTabWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Warning: Tab Switching Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Switching tabs or applications during the assessment is not allowed and will be recorded.
+              Continued tab switching may result in automatic submission of your assessment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowTabWarning(false)}>
+              I Understand
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageTransition>
   );
 };

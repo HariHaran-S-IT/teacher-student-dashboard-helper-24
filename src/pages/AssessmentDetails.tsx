@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
-  ArrowLeft, Calendar, CheckCircle, Clock, FileText, Search, XCircle 
+  ArrowLeft, Calendar, CheckCircle, Clock, Download, FileText, Search, XCircle 
 } from 'lucide-react';
 import AnimatedCard from '@/components/AnimatedCard';
 import PageTransition from '@/components/PageTransition';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import {
   Table,
   TableBody,
@@ -104,6 +105,59 @@ const AssessmentDetails = () => {
     }
   };
 
+  const downloadExcel = () => {
+    // Create data for Excel
+    const data = filteredStudentSubmissions.map(({ student, submission }) => {
+      // Get all answers in a structured format
+      const studentAnswers: Record<string, string> = {};
+      const correctAnswers: Record<string, string> = {};
+      let numCorrect = 0;
+      
+      if (submission) {
+        assessment.questions.forEach(question => {
+          const studentAnswer = submission.answers.find(a => a.questionId === question.id)?.answer || '';
+          studentAnswers[`Q${question.id}`] = studentAnswer;
+          
+          if (question.correctAnswer) {
+            correctAnswers[`Q${question.id}_correct`] = question.correctAnswer;
+            if (studentAnswer === question.correctAnswer) {
+              numCorrect++;
+            }
+          }
+        });
+      }
+
+      return {
+        'Student Name': student.name,
+        'Email': student.email,
+        'Status': submission 
+          ? (submission.isCompleted ? 'Completed' : 'Incomplete') 
+          : 'Not Started',
+        'Submission Date': submission 
+          ? format(new Date(submission.submittedAt), 'yyyy-MM-dd HH:mm') 
+          : '-',
+        'Marks': submission?.marksAwarded !== undefined 
+          ? `${submission.marksAwarded}/${totalPossibleMarks}`
+          : '-',
+        'Auto-calculated Score': submission?.isCompleted 
+          ? `${numCorrect} correct answers`
+          : '-',
+        ...studentAnswers,
+        ...correctAnswers
+      };
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(data);
+    
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Assessment Results');
+    
+    // Generate Excel file
+    XLSX.writeFile(wb, `${assessment.title} - Results.xlsx`);
+  };
+
   return (
     <PageTransition>
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 sm:p-6 md:p-8">
@@ -148,7 +202,7 @@ const AssessmentDetails = () => {
             </div>
           </header>
 
-          <div className="mb-6">
+          <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -158,6 +212,15 @@ const AssessmentDetails = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            
+            <Button 
+              variant="outline" 
+              onClick={downloadExcel}
+              disabled={filteredStudentSubmissions.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download Excel Report
+            </Button>
           </div>
 
           <AnimatedCard contentClassName="p-0" delay={0.2}>

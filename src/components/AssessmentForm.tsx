@@ -57,6 +57,13 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
   const updateQuestion = (index: number, field: keyof Question, value: any) => {
     const updatedQuestions = [...questions];
     updatedQuestions[index] = { ...updatedQuestions[index], [field]: value };
+    
+    // Reset correctAnswer when changing from multiple-choice to text
+    if (field === 'type' && value === 'text') {
+      updatedQuestions[index].correctAnswer = undefined;
+      updatedQuestions[index].options = undefined;
+    }
+    
     setQuestions(updatedQuestions);
   };
 
@@ -80,6 +87,12 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
       ...question,
       options
     };
+    
+    // Update correctAnswer if it was this option
+    if (question.correctAnswer === options[optionIndex]) {
+      updatedQuestions[questionIndex].correctAnswer = value;
+    }
+    
     setQuestions(updatedQuestions);
   };
 
@@ -87,12 +100,13 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
     const updatedQuestions = [...questions];
     const question = updatedQuestions[questionIndex];
     const options = [...(question.options || [])];
+    const removedOption = options[optionIndex];
     options.splice(optionIndex, 1);
     updatedQuestions[questionIndex] = {
       ...question,
       options,
       // Reset correctAnswer if it was the removed option
-      correctAnswer: question.correctAnswer === options[optionIndex] ? undefined : question.correctAnswer
+      correctAnswer: question.correctAnswer === removedOption ? undefined : question.correctAnswer
     };
     setQuestions(updatedQuestions);
   };
@@ -125,6 +139,16 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
     
     if (invalidMCQuestions.length > 0) {
       toast.error('Multiple choice questions must have at least two non-empty options');
+      return;
+    }
+    
+    // Validate correct answers for multiple choice questions
+    const missingCorrectAnswers = questions.filter(q => 
+      q.type === 'multiple-choice' && !q.correctAnswer
+    );
+    
+    if (missingCorrectAnswers.length > 0) {
+      toast.error('All multiple choice questions must have a correct answer selected');
       return;
     }
     
@@ -281,12 +305,22 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
 
                 {(question.options || []).map((option, oIndex) => (
                   <div key={oIndex} className="flex items-center gap-2">
-                    <Input
-                      value={option}
-                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                      placeholder={`Option ${oIndex + 1}`}
-                      className="flex-1"
-                    />
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id={`q-${qIndex}-opt-${oIndex}-correct`}
+                        name={`q-${qIndex}-correct`}
+                        checked={question.correctAnswer === option}
+                        onChange={() => updateQuestion(qIndex, 'correctAnswer', option)}
+                        className="h-4 w-4"
+                      />
+                      <Input
+                        value={option}
+                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                        placeholder={`Option ${oIndex + 1}`}
+                        className="flex-1"
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
@@ -298,22 +332,9 @@ const AssessmentForm = ({ onSubmit, onCancel }: AssessmentFormProps) => {
                     </Button>
                   </div>
                 ))}
-
-                <div className="space-y-2">
-                  <Label htmlFor={`q-${qIndex}-correct`}>Correct Answer</Label>
-                  <select
-                    id={`q-${qIndex}-correct`}
-                    value={question.correctAnswer || ''}
-                    onChange={(e) => updateQuestion(qIndex, 'correctAnswer', e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select correct answer</option>
-                    {(question.options || []).map((option, oIndex) => (
-                      <option key={oIndex} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                
+                <div className="text-sm text-gray-500 mt-2">
+                  Select the radio button next to the correct answer option
                 </div>
               </div>
             )}
