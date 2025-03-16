@@ -12,6 +12,7 @@ interface AnimatedCardProps {
   header?: React.ReactNode;
   footer?: React.ReactNode;
   delay?: number;
+  id?: string;  // Add the id prop to the interface
 }
 
 export const AnimatedCard = ({
@@ -23,6 +24,7 @@ export const AnimatedCard = ({
   header,
   footer,
   delay = 0,
+  id,  // Add id to the destructured props
 }: AnimatedCardProps) => {
   return (
     <motion.div
@@ -34,6 +36,7 @@ export const AnimatedCard = ({
         delay,
       }}
       className={cn('w-full', className)}
+      id={id}  // Pass the id to the motion.div element
     >
       <Card className="glass-card overflow-hidden border-[0.5px] border-white/30">
         {header && (
